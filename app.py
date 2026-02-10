@@ -1,4 +1,4 @@
-from flask import Flask, render_template,request,redirect
+from flask import Flask, render_template,request,redirect,flash
 import os
 from flask_sqlalchemy import SQLAlchemy
 
@@ -6,7 +6,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///employee.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
+app.config['SECRET_KEY'] = 'supersecretkey' 
+
 
 db = SQLAlchemy(app)
 
@@ -20,14 +22,23 @@ with app.app_context():
 
 @app.route("/",methods=['GET', 'POST'])
 def home(): 
-     if request.method == 'POST': 
-       name = request.form['name'] 
-       email=request.form['email']
-       employee = Employee(name= name, email= email)
-       db.session.add(employee)
-       db.session.commit()
-     allemployees = Employee.query.all()
-     return render_template("index.html", employees=allemployees)
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        
+        if not name or not email: 
+            flash("All fields are required!", "danger")
+            return redirect("/")
+        
+        employee = Employee(name= name, email= email)
+        db.session.add(employee)
+        db.session.commit()
+
+        flash("Employee added successfully!", "success")
+        return redirect("/")
+         
+    allemployees = Employee.query.all()
+    return render_template("index.html", employees=allemployees)
 
 @app.route("/about")
 def about():
@@ -46,13 +57,19 @@ def delete(sno):
 @app.route("/update/<int:sno>", methods=['GET', 'POST'])
 def update(sno):
     if request.method=='POST':
-        name = request.form['name']
-        email = request.form['email']
+
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip() 
+        if not name or not email: 
+            flash("All fields are required!", "danger")
+            return redirect("/")
         employee = Employee.query.filter_by(sno=sno).first()
         employee.name = name
         employee.email = email
         db.session.add(employee)
-        db.session.commit()
+        db.session.commit() 
+        
+        flash("Employee added successfully!", "success")
         return redirect("/")
 
     employee = Employee.query.filter_by(sno=sno).first()
